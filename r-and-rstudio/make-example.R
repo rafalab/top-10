@@ -1,7 +1,7 @@
 set.seed(0)
 n <- 10
-cases <- rnorm(n, log2(512), 0.25)
-controls <- rnorm(n, log2(512), 0.25)
+cases <- rnorm(n, log2(100), 1)
+controls <- rnorm(n, log2(100), 1)
 cases <- 2^(cases)
 controls <- 2^(controls)
 cases[1:2] <- 999
@@ -21,17 +21,18 @@ p <- dat %>% group_by(type) %>% summarize(average = mean(measurement),
   ggplot(aes(type, average)) + theme_excel() + 
   geom_errorbar(aes(ymin = average - 2*se, ymax = average+2*se), width = 0.25)+
   geom_bar(stat = "identity", width=0.5, fill=4, col = 1) +
-  annotate(geom="text", x="cases", y=790, label = "*", cex = 15) +
-  xlab("") + ylab("measurement")
-
+  annotate(geom="text", x="cases", y=585, label = "*", cex = 15) +
+  xlab("") + ylab("measurement") + 
+  theme(axis.text=element_text(size=20),
+        axis.title=element_text(size=20))
 ggsave(p, file = "figs/dynamite-plot.pdf", device = "pdf", height = 6, width = 8)
 
 
 set.seed(1)
 n <- 10
 for(i in 1:25){
-  cases <- rnorm(n, log2(512), 0.25)
-  controls <- rnorm(n, log2(512), 0.25)
+  cases <- rnorm(n, log2(100), 1)
+  controls <- rnorm(n, log2(100), 1)
   cases <- 2^(cases)
   controls <- 2^(controls)
   cases <- round(cases)
