@@ -1,0 +1,33 @@
+---
+title: "report"
+author: "Rafael A. Irizarry"
+date: "9/27/2018"
+output: html_document
+---
+
+## Reading in the data
+
+I read in the data like this:
+
+```{r}
+dat <- read.csv("data/example-data.csv")
+```
+
+
+## t-test
+
+I did the t-test like this:
+
+```{r}
+t.test(measurement ~ type, data = dat)
+```
+
+
+## Exploration
+
+But then I explored the data and it made me sad.
+```{r}
+boxplot(measurement ~ type, data = dat)
+points(measurement ~ type, data = dat)
+```
+
