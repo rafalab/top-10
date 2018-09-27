@@ -1,7 +1,7 @@
 set.seed(0)
 n <- 10
-cases <- rnorm(n, log2(100), 1)
-controls <- rnorm(n, log2(100), 1)
+cases <- rnorm(n, log2(128), 1)
+controls <- rnorm(n, log2(128), 1)
 cases <- 2^(cases)
 controls <- 2^(controls)
 cases[1:2] <- 999
@@ -21,7 +21,7 @@ p <- dat %>% group_by(type) %>% summarize(average = mean(measurement),
   ggplot(aes(type, average)) + theme_excel() + 
   geom_errorbar(aes(ymin = average - 2*se, ymax = average+2*se), width = 0.25)+
   geom_bar(stat = "identity", width=0.5, fill=4, col = 1) +
-  annotate(geom="text", x="cases", y=585, label = "*", cex = 15) +
+  annotate(geom="text", x="cases", y=620, label = "*", cex = 15) +
   xlab("") + ylab("measurement") + 
   theme(axis.text=element_text(size=20),
         axis.title=element_text(size=20))
