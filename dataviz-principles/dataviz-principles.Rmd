@@ -767,8 +767,8 @@ dat %>% gather(drug, survival, -log.dose) %>%
 
 ## Avoid gratuitousthree dimensional plots
 
-```{r,echo=FALSE, out.width="6in"}
-knitr::include_app("https://raw.githubusercontent.com/kbroman/Talk_Graphs/master/Figs/fig2d.png")
+```{r,echo=FALSE, out.width = "600px"}
+knitr::include_graphics("https://raw.githubusercontent.com/kbroman/Talk_Graphs/master/Figs/fig2d.png")
 ```
 
 ## Avoid too any significant digits
