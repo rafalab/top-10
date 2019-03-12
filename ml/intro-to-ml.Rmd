@@ -91,7 +91,7 @@ tmp %>% knitr::kable()
 ## An example 
 
 ```{r, echo=FALSE, out.width="75%"}
-knitr::include_graphics("https://rafalab.github.io/dsbook/ml/img/how-to-write-a-address-on-an-envelope-how-to-write-the-address-on-an-envelope-write-address-on-envelope-india-finishedenvelope-x69070.png")
+knitr::include_graphics("https://rafalab.github.io/dsbook/img//how-to-write-a-address-on-an-envelope-how-to-write-the-address-on-an-envelope-write-address-on-envelope-india-finishedenvelope-x69070.png")
 ```
 
 ## An example 
@@ -261,7 +261,8 @@ best_cutoff
 
 
 ```{r}
-y_hat <- ifelse(test_set$height > best_cutoff, "Male", "Female") %>% factor(levels = levels(test_set$sex))
+y_hat <- ifelse(test_set$height > best_cutoff, "Male", "Female") %>% 
+  factor(levels = levels(test_set$sex))
 y_hat <- factor(y_hat)
 mean(y_hat == test_set$sex)
 ```
@@ -418,44 +419,22 @@ map_df(cutoffs, function(x){
 
 ## ROC and precision-recall curves
 
-```{r}
-guessing <- map_df(probs, function(p){
-  y_hat <- sample(c("Male", "Female"), length(test_index), replace = TRUE, prob=c(p, 1-p)) %>% factor(levels = c("Female", "Male"))
-  list(method = "Guess",
-    recall = sensitivity(y_hat, test_set$sex),
-    precision = precision(y_hat, test_set$sex))
-})
 
-height_cutoff <- map_df(cutoffs, function(x){
-  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>% factor(levels = c("Female", "Male"))
-  list(method = "Height cutoff",
-       recall = sensitivity(y_hat, test_set$sex),
-    precision = precision(y_hat, test_set$sex))
-})
-```
-
-## ROC and precision-recall curves
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-bind_rows(guessing, height_cutoff) %>%
-  ggplot(aes(recall, precision, color = method)) +
-  geom_line() +
-  geom_point()
-```
-
-
-## ROC and precision-recall curves
-
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+cutoffs <- c(50, seq(55, 75), 80)
+probs <- seq(0.05, .95, length.out = 50)
 guessing <- map_df(probs, function(p){
-  y_hat <- sample(c("Male", "Female"), length(test_index), replace = TRUE, prob=c(p, 1-p)) %>% factor(levels = c("Male", "Female"))
+  y_hat <- sample(c("Male", "Female"), length(test_index), replace = TRUE, prob=c(p, 1-p)) %>% 
+    factor(levels = c("Male", "Female"))
   list(method = "Guess",
     recall = sensitivity(y_hat, relevel(test_set$sex, "Male", "Female")),
     precision = precision(y_hat, relevel(test_set$sex, "Male", "Female")))
 })
 
 height_cutoff <- map_df(cutoffs, function(x){
-  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>% factor(levels = c("Male", "Female"))
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>% 
+    factor(levels = c("Male", "Female"))
   list(method = "Height cutoff",
        recall = sensitivity(y_hat, relevel(test_set$sex, "Male", "Female")),
     precision = precision(y_hat, relevel(test_set$sex, "Male", "Female")))
@@ -756,6 +735,169 @@ p2 <- plot_cond_prob(predict(knn_fit_401, mnist_27$true_p)[,2]) +
 grid.arrange(p1, p2, nrow=1)
 ```
 
+## Let's pick a $k$
+
+
+```{r, warning=FALSE, message=FALSE}
+library(purrr)
+ks <- seq(3, 151, 2)
+accuracy <- map_df(ks, function(k){
+  fit <- knn3(y ~ ., data = mnist_27$train, k = k)
+
+  y_hat <- predict(fit, mnist_27$train, type = "class")
+  cm_train <- confusionMatrix(data = y_hat, reference = mnist_27$train$y)
+  train_error <- cm_train$overall["Accuracy"]
+
+  y_hat <- predict(fit, mnist_27$test, type = "class")
+  cm_test <- confusionMatrix(data = y_hat, reference = mnist_27$test$y)
+  test_error <- cm_test$overall["Accuracy"]
+
+  tibble(train = train_error, test = test_error)
+})
+```
+
+## Let's pick a $k$
+
+```{r accuracy-vs-k-knn, echo=FALSE}
+accuracy %>% mutate(k = ks) %>%
+  gather(set, accuracy, -k) %>%
+  mutate(set = factor(set, levels = c("train", "test"))) %>%
+  ggplot(aes(k, accuracy, color = set)) +
+  geom_line() +
+  geom_point()
+```
+
+## Let's pick a $k$
+
+- Is this an good estimate of accuracy?
+```{r}
+ks[which.max(accuracy$test)]
+max(accuracy$test)
+```
+
+## Cross-validation
+
+```{r, include=FALSE}
+if(knitr::is_html_output()){
+  knitr::opts_chunk$set(out.width = "500px", out.extra='style="display: block; margin-left: auto; margin-right: auto; background-color: #000; padding:3px;"')
+  } else{
+  knitr::opts_chunk$set(out.width = "5in")
+}
+```
+
+
+$$
+\mbox{MSE} = \mbox{E}\left\{ \frac{1}{N}\sum_{i=1}^N (\hat{Y}_i - Y_i)^2 \right\}
+$$
+
+When all we have at our disposal is one dataset, we can estimate the MSE with the observed MSE like this:
+
+$$
+\hat{\mbox{MSE}} = \frac{1}{N}\sum_{i=1}^N (\hat{y}_i - y_i)^2
+$$
+These two are often referred to as the _true error_ and _apparent error_ respectively.
+
+
+## Cross-validation
+
+There are two important characteristics of the apparent error we should always keep in mind:
+
+1. Because our data is random, the apparent error is a random variable. For example, the dataset we have may be a random sample from a larger population. An algorithm may have a lower apparent error than another algorithm due to luck.
+
+2. If we train an algorithm on the same dataset that we use to compute the apparent error, we might be overtraining. In general, when we do this, the apparent error will be an underestimate of the true error. We will see an extreme example of this with k nearest neighbors.
+
+## Cross-validation
+
+Thinks of the true error as the average MSE after running the exercise over and over
+
+$$
+\frac{1}{B} \sum_{b=1}^B \frac{1}{N}\sum_{i=1}^N \left(\hat{y}_i^b - y_i^b\right)^2 
+$$
+
+## K-fold cross validation
+
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-1.png")
+```
+
+
+## K-fold cross validation
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-2.png")
+```
+
+## K-fold cross validation
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-3.png")
+```
+
+## K-fold cross validation
+
+$$
+\mbox{MSE}(\lambda) = \frac{1}{B} \sum_{b=1}^B \frac{1}{N}\sum_{i=1}^N \left(\hat{y}_i^b(\lambda) - y_i^b\right)^2 
+$$
+
+## K-fold cross validation
+
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-4.png")
+```
+
+## K-fold cross validation
+
+Now we can fit the model in the training set, then compute the apparent error on the independent set:
+
+$$
+\hat{\mbox{MSE}}_b(\lambda) = \frac{1}{M}\sum_{i=1}^M \left(\hat{y}_i^b(\lambda) - y_i^b\right)^2 
+$$
+
+## K-fold cross validation
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-5.png")
+```
+
+## K-fold cross validation
+
+Now we repeat the calculation above for each of these sets $b=1,\dots,K$ and obtain $\hat{\mbox{MSE}}_1(\lambda),\dots, \hat{\mbox{MSE}}_K(\lambda)$. Then, for our final estimate, we compute the average:
+
+$$
+\hat{\mbox{MSE}}(\lambda) = \frac{1}{B} \sum_{b=1}^K \hat{\mbox{MSE}}_b(\lambda)
+$$
+
+## K-fold cross validation
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-6.png")
+```
+
+## K-fold cross validation
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-7.png")
+```
+
+## K-fold cross validation
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-8.png")
+```
+
+## K-fold cross validation
+
+- Now how do we pick the cross validation $K$? 
+- Large values of $K$ are preferable because the training data better imitates the original dataset. 
+- However, larger values of $K$ will have much slower computation time: for example, 100-fold cross validation will be 10 times slower than 10-fold cross validation. 
+- For this reason, the choices of $K=5$ and $K=10$ are popular.
+
+## Bootstrap cross validation
+
+One way we can improve the variance of our final estimate is to take more samples. To do this, we would no longer require the training set to be partitioned into non-overlapping sets. Instead, we would just pick $K$ sets of some size at random.
+
 
 ## Chaning the $k$ in knn
 
@@ -811,4 +953,15 @@ p2 <- plot_cond_prob(predict(train_knn, newdata = mnist_27$true_p, type = "prob"
 
 grid.arrange(p2, p1, nrow=1)
 ```
+
+
+## Learn more
+
+Many resources. Here are two:
+
+- An Introduction to Statistical Learning
+
+- https://rafalab.github.io/dsbook/ and HarvardX course
+
+
 
